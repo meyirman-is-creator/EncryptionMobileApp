@@ -1,4 +1,3 @@
-
 function gcd(a, b) {
     while (b !== 0) {
         let temp = b;
@@ -39,10 +38,24 @@ function modPow(base, exponent, modulus) {
         if ((exponent % 2) === 1) {
             result = (result * base) % modulus;
         }
-        exponent = exponent >> 1;
+        exponent = Math.floor(exponent / 2);
         base = (base * base) % modulus;
     }
     return result;
+}
+
+function generateKeys(p, q) {
+    const n = p * q;
+    const phi = (p - 1) * (q - 1);
+    let e = 3;
+    while (gcd(e, phi) !== 1) {
+        e += 2;
+    }
+    const d = modInverse(e, phi);
+    return {
+        publicKey: { e, n },
+        privateKey: { d, n }
+    };
 }
 
 function encrypt(message, publicKey) {
@@ -58,4 +71,4 @@ function decrypt(encryptedMessage, privateKey) {
     return String.fromCharCode(...decryptedMessage);
 }
 
-module.exports = { encrypt, decrypt };
+module.exports = { generateKeys, encrypt, decrypt };

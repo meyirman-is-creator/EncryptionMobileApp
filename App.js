@@ -2,17 +2,14 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, Button, Picker, StyleSheet } from 'react-native';
 const sha1 = require('./algorithms/sha1');
 const sha224 = require('./algorithms/sha224');
-const sha256 = require('./algorithms/sha256');
-const sha384 = require('./algorithms/sha384');
-const sha512 = require('./algorithms/sha512');
 const { encryptAES, decryptAES } = require('./algorithms/aes');
-const { encrypt, decrypt } = require('./algorithms/rsa');
+const { encrypt, decrypt, generateKeys } = require('./algorithms/rsa');
 const { ECC, Point } = require('./algorithms/ecc');
 const App = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('');
-
+  const [status, setStatus] = useState('');
   const [aesKeySize, setAesKeySize] = useState('128');
   const [aesKey, setAesKey] = useState('');
   const [aesIv, setAesIv] = useState('');
@@ -36,7 +33,6 @@ const App = () => {
   const [eccPublicKeyX, setEccPublicKeyX] = useState('');
   const [eccPublicKeyY, setEccPublicKeyY] = useState('');
   const handleEncrypt = (algorithm) => {
-
     let encrypted;
     switch (algorithm) {
       case 'SHA1':
@@ -44,15 +40,6 @@ const App = () => {
         break;
       case 'SHA224':
         encrypted = sha224(inputText);
-        break;
-      case 'SHA256':
-        encrypted = sha256(inputText);
-        break;
-      case 'SHA384':
-        encrypted = sha384(inputText);
-        break;
-      case 'SHA512':
-        encrypted = sha512(inputText);
         break;
       case 'AES':
         encrypted = encryptAES(
@@ -75,17 +62,56 @@ const App = () => {
         );
         const publicKey = new Point(parseInt(eccPublicKeyX, 10), parseInt(eccPublicKeyY, 10));
         const messagePoint = ecc.encodeMessage(inputText);
-        const encrypted = ecc.encrypt(messagePoint, publicKey);
-        setOutputText(`C1(${encrypted.C1.x}, ${encrypted.C1.y}), C2(${encrypted.C2.x}, ${encrypted.C2.y})`);
+        encrypted = ecc.encrypt(messagePoint, publicKey);
+
+        break;
+      case 'RSA':
+        const keys = generateKeys(61, 53);
+        setRsaPublicKey(keys.publicKey.e);
+        setRsaPrivateKey(keys.privateKey.d);
+        setRsaModulus(keys.publicKey.n);
+        encrypted = encrypt(inputText, keys.publicKey);
         break;
       default:
         encrypted = '';
     }
-    setOutputText(encrypted);
+    if ('ECC' === algorithm) {
+      setOutputText(`C1(${encrypted.C1.x}, ${encrypted.C1.y}), C2(${encrypted.C2.x}, ${encrypted.C2.y})`);
+    } else {
+      setOutputText(encrypted);
+
+    }
   };
 
-  const handleDecrypt = () => {
-    // Implement AES decryption logic here if needed
+  const handleDecrypt = (algorithm) => {
+    let decrypted;
+    switch (algorithm) {
+      case 'AES':
+        decrypted = decryptAES(inputText, aesKey, aesIv, aesKeySize, aesMode, aesPadding, outputFormat);
+        break;
+      case 'RSA':
+        const keys = {
+          publicKey: { e: rsaPublicKey, n: rsaModulus },
+          privateKey: { d: rsaPrivateKey, n: rsaModulus }
+        };
+        decrypted = decrypt(inputText.split(',').map(Number), keys.privateKey);
+        break;
+      case 'ECC':
+        const ecc = new ECC(
+          parseInt(eccA, 10),
+          parseInt(eccB, 10),
+          parseInt(eccP, 10),
+          new Point(parseInt(eccGx, 10), parseInt(eccGy, 10)),
+          parseInt(eccN, 10)
+        );
+        const privateKey = parseInt(eccPrivateKey, 10);
+        const encryptedPoints = inputText.split(';').map(pt => pt.split(',').map(Number));
+        decrypted = ecc.decrypt({ C1: new Point(encryptedPoints[0][0], encryptedPoints[0][1]), C2: new Point(encryptedPoints[1][0], encryptedPoints[1][1]) }, privateKey);
+        break;
+      default:
+        decrypted = '';
+    }
+    setOutputText(decrypted);
   };
 
   return (
@@ -99,31 +125,31 @@ const App = () => {
         multiline
       />
       <View style={styles.buttonContainer}>
-        {['SHA1', 'SHA224', 'SHA256', 'SHA384', 'SHA512'].map((algorithm) => (
+        {['SHA1', 'SHA224'].map((algorithm) => (
           <TouchableOpacity
             key={algorithm}
             style={[styles.button, selectedAlgorithm === algorithm && styles.selectedButton]}
-            onPress={() => { handleEncrypt(algorithm) }}
+            onPress={() => handleEncrypt(algorithm)}
           >
             <Text>{algorithm}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={styles.button} onPress={() => setSelectedAlgorithm('RSA')}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); handleEncrypt('RSA'); }}>
           <Text>RSA Encryption</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => handleDecrypt('RSA')}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); handleDecrypt('RSA'); }}>
           <Text>RSA Decryption</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => setSelectedAlgorithm('AES')}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('AES'); handleEncrypt('AES'); }}>
           <Text>AES Encryption</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => handleDecrypt('AES')}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('AES'); handleDecrypt('AES'); }}>
           <Text>AES Decryption</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => setSelectedAlgorithm('ECC')}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); handleEncrypt('ECC'); }}>
           <Text>ECC Encryption</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => handleDecrypt('ECC')}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); handleDecrypt('ECC'); }}>
           <Text>ECC Decryption</Text>
         </TouchableOpacity>
       </View>
@@ -177,6 +203,9 @@ const App = () => {
           </Picker>
           <TouchableOpacity style={styles.encryptButton} onPress={() => handleEncrypt('AES')}>
             <Text style={{ color: '#fff' }}>Encryption</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.encryptButton} onPress={() => handleDecrypt('AES')}>
+            <Text style={{ color: '#fff' }}>Decryption</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -302,6 +331,7 @@ const App = () => {
     </ScrollView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

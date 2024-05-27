@@ -17,11 +17,11 @@ class Point {
 
 class ECC {
     constructor(a, b, p, G, n) {
-        this.a = a; // коэффициент a кривой
-        this.b = b; // коэффициент b кривой
-        this.p = p; // модуль
-        this.G = G; // базовая точка
-        this.n = n; // порядок группы
+        this.a = a; 
+        this.b = b; 
+        this.p = p; 
+        this.G = G; 
+        this.n = n; 
     }
 
     modInverse(k, p) {
