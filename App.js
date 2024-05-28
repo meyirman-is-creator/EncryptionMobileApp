@@ -84,6 +84,7 @@ const App = () => {
   };
 
   const handleDecrypt = (algorithm) => {
+    console.log(decryptAES(inputText, aesKey, aesIv, aesKeySize, aesMode, aesPadding, outputFormat))
     let decrypted;
     switch (algorithm) {
       case 'AES':
@@ -188,18 +189,14 @@ const App = () => {
           <Text style={styles.label}>Mode:</Text>
           <Picker selectedValue={aesMode} style={styles.picker} onValueChange={(itemValue) => setAesMode(itemValue)}>
             <Picker.Item label="CBC" value="CBC" />
-            <Picker.Item label="ECB" value="ECB" />
             <Picker.Item label="CFB" value="CFB" />
-            <Picker.Item label="OFB" value="OFB" />
           </Picker>
           <Text style={styles.label}>Padding:</Text>
           <Picker selectedValue={aesPadding} style={styles.picker} onValueChange={(itemValue) => setAesPadding(itemValue)}>
             <Picker.Item label="Pkcs7" value="Pkcs7" />
-            <Picker.Item label="Iso10126" value="Iso10126" />
             <Picker.Item label="AnsiX923" value="AnsiX923" />
             <Picker.Item label="Iso7816" value="Iso7816" />
             <Picker.Item label="ZeroPadding" value="ZeroPadding" />
-            <Picker.Item label="NoPadding" value="NoPadding" />
           </Picker>
           <TouchableOpacity style={styles.encryptButton} onPress={() => handleEncrypt('AES')}>
             <Text style={{ color: '#fff' }}>Encryption</Text>
