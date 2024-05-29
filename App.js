@@ -9,7 +9,6 @@ const App = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('');
-  const [status, setStatus] = useState('');
   const [aesKeySize, setAesKeySize] = useState('128');
   const [aesKey, setAesKey] = useState('');
   const [aesIv, setAesIv] = useState('');
@@ -63,7 +62,6 @@ const App = () => {
         const publicKey = new Point(parseInt(eccPublicKeyX, 10), parseInt(eccPublicKeyY, 10));
         const messagePoint = ecc.encodeMessage(inputText);
         encrypted = ecc.encrypt(messagePoint, publicKey);
-
         break;
       case 'RSA':
         const keys = generateKeys(61, 53);
@@ -135,23 +133,14 @@ const App = () => {
             <Text>{algorithm}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); handleEncrypt('RSA'); }}>
-          <Text>RSA Encryption</Text>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); }}>
+          <Text>RSA</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); handleDecrypt('RSA'); }}>
-          <Text>RSA Decryption</Text>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('AES');}}>
+          <Text>AES</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('AES'); handleEncrypt('AES'); }}>
-          <Text>AES Encryption</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('AES'); handleDecrypt('AES'); }}>
-          <Text>AES Decryption</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); handleEncrypt('ECC'); }}>
-          <Text>ECC Encryption</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); handleDecrypt('ECC'); }}>
-          <Text>ECC Decryption</Text>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); }}>
+          <Text>ECC</Text>
         </TouchableOpacity>
       </View>
       {selectedAlgorithm === 'AES' && (
