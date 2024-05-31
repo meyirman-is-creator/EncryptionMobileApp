@@ -1,20 +1,12 @@
 import React, { useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, Button, Picker, StyleSheet } from 'react-native';
-const sha1 = require('./algorithms/sha1');
 const sha224 = require('./algorithms/sha224');
-const { encryptAES, decryptAES } = require('./algorithms/aes');
 const { encrypt, decrypt, generateKeys } = require('./algorithms/rsa');
 const { ECC, Point } = require('./algorithms/ecc');
 const App = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('');
-  const [aesKeySize, setAesKeySize] = useState('128');
-  const [aesKey, setAesKey] = useState('');
-  const [aesIv, setAesIv] = useState('');
-  const [aesMode, setAesMode] = useState('CBC');
-  const [aesPadding, setAesPadding] = useState('Pkcs7');
-  const [outputFormat, setOutputFormat] = useState('Base64');
 
   const [rsaPublicKey, setRsaPublicKey] = useState('');
   const [rsaPrivateKey, setRsaPrivateKey] = useState('');
@@ -34,23 +26,11 @@ const App = () => {
   const handleEncrypt = (algorithm) => {
     let encrypted;
     switch (algorithm) {
-      case 'SHA1':
-        encrypted = sha1(inputText);
-        break;
+      
       case 'SHA224':
         encrypted = sha224(inputText);
         break;
-      case 'AES':
-        encrypted = encryptAES(
-          inputText,
-          aesKey,
-          aesIv,
-          aesKeySize,
-          aesMode,
-          aesPadding,
-          outputFormat
-        );
-        break;
+      
       case 'ECC':
         const ecc = new ECC(
           parseInt(eccA, 10),
@@ -82,12 +62,8 @@ const App = () => {
   };
 
   const handleDecrypt = (algorithm) => {
-    console.log(decryptAES(inputText, aesKey, aesIv, aesKeySize, aesMode, aesPadding, outputFormat))
     let decrypted;
     switch (algorithm) {
-      case 'AES':
-        decrypted = decryptAES(inputText, aesKey, aesIv, aesKeySize, aesMode, aesPadding, outputFormat);
-        break;
       case 'RSA':
         const keys = {
           publicKey: { e: rsaPublicKey, n: rsaModulus },
@@ -124,77 +100,18 @@ const App = () => {
         multiline
       />
       <View style={styles.buttonContainer}>
-        {['SHA1', 'SHA224'].map((algorithm) => (
-          <TouchableOpacity
-            key={algorithm}
-            style={[styles.button, selectedAlgorithm === algorithm && styles.selectedButton]}
-            onPress={() => handleEncrypt(algorithm)}
-          >
-            <Text>{algorithm}</Text>
-          </TouchableOpacity>
-        ))}
+        
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('');handleEncrypt('SHA224'); }}>
+          <Text>SHA224</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); }}>
           <Text>RSA</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('AES');}}>
-          <Text>AES</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); }}>
           <Text>ECC</Text>
         </TouchableOpacity>
       </View>
-      {selectedAlgorithm === 'AES' && (
-        <View style={styles.aesContainer}>
-          <Text style={styles.subHeader}>AES Options</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Output Format:</Text>
-            <View style={styles.radioGroup}>
-              <TouchableOpacity onPress={() => setOutputFormat('Base64')}>
-                <Text style={outputFormat === 'Base64' ? styles.radioSelected : styles.radio}>Base64</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setOutputFormat('Hex')}>
-                <Text style={outputFormat === 'Hex' ? styles.radioSelected : styles.radio}>Hex</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          <Text style={styles.label}>Key Size:</Text>
-          <Picker selectedValue={aesKeySize} style={styles.picker} onValueChange={(itemValue) => setAesKeySize(itemValue)}>
-            <Picker.Item label="128" value="128" />
-            <Picker.Item label="192" value="192" />
-            <Picker.Item label="256" value="256" />
-          </Picker>
-          <TextInput
-            style={styles.input}
-            placeholder="Secret Key"
-            value={aesKey}
-            onChangeText={setAesKey}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Initialization Vector (Optional)"
-            value={aesIv}
-            onChangeText={setAesIv}
-          />
-          <Text style={styles.label}>Mode:</Text>
-          <Picker selectedValue={aesMode} style={styles.picker} onValueChange={(itemValue) => setAesMode(itemValue)}>
-            <Picker.Item label="CBC" value="CBC" />
-            <Picker.Item label="CFB" value="CFB" />
-          </Picker>
-          <Text style={styles.label}>Padding:</Text>
-          <Picker selectedValue={aesPadding} style={styles.picker} onValueChange={(itemValue) => setAesPadding(itemValue)}>
-            <Picker.Item label="Pkcs7" value="Pkcs7" />
-            <Picker.Item label="AnsiX923" value="AnsiX923" />
-            <Picker.Item label="Iso7816" value="Iso7816" />
-            <Picker.Item label="ZeroPadding" value="ZeroPadding" />
-          </Picker>
-          <TouchableOpacity style={styles.encryptButton} onPress={() => handleEncrypt('AES')}>
-            <Text style={{ color: '#fff' }}>Encryption</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.encryptButton} onPress={() => handleDecrypt('AES')}>
-            <Text style={{ color: '#fff' }}>Decryption</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      
       {selectedAlgorithm === 'RSA' && (
         <View style={styles.rsaContainer}>
           <Text style={styles.subHeader}>RSA Options</Text>
