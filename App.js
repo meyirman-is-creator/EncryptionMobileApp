@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TextInput, TouchableOpacity, Button, Picker, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TextInput, TouchableOpacity, Button, StyleSheet, Alert } from 'react-native';
 const sha224 = require('./algorithms/sha224');
 const { encrypt, decrypt, generateKeys } = require('./algorithms/rsa');
 const { ECC, Point } = require('./algorithms/ecc');
+
 const App = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
@@ -14,31 +15,24 @@ const App = () => {
   const [rsaInputFormat, setRsaInputFormat] = useState('Hex');
   const [rsaOutputFormat, setRsaOutputFormat] = useState('Hex');
 
-  const [eccA, setEccA] = useState('');
-  const [eccB, setEccB] = useState('');
-  const [eccP, setEccP] = useState('');
-  const [eccGx, setEccGx] = useState('');
-  const [eccGy, setEccGy] = useState('');
-  const [eccN, setEccN] = useState('');
   const [eccPrivateKey, setEccPrivateKey] = useState('');
   const [eccPublicKeyX, setEccPublicKeyX] = useState('');
   const [eccPublicKeyY, setEccPublicKeyY] = useState('');
+  const [inputError, setInputError] = useState('');
+
   const handleEncrypt = (algorithm) => {
+    if (inputText === "") {
+      setInputError('Input text cannot be empty');
+      return;
+    }
+    setInputError('');
     let encrypted;
     switch (algorithm) {
-      
       case 'SHA224':
         encrypted = sha224(inputText);
         break;
-      
       case 'ECC':
-        const ecc = new ECC(
-          parseInt(eccA, 10),
-          parseInt(eccB, 10),
-          parseInt(eccP, 10),
-          new Point(parseInt(eccGx, 10), parseInt(eccGy, 10)),
-          parseInt(eccN, 10)
-        );
+        const ecc = new ECC(1, 1, 23, new Point(9, 17), 19);
         const publicKey = new Point(parseInt(eccPublicKeyX, 10), parseInt(eccPublicKeyY, 10));
         const messagePoint = ecc.encodeMessage(inputText);
         encrypted = ecc.encrypt(messagePoint, publicKey);
@@ -54,14 +48,18 @@ const App = () => {
         encrypted = '';
     }
     if ('ECC' === algorithm) {
-      setOutputText(`C1(${encrypted.C1.x}, ${encrypted.C1.y}), C2(${encrypted.C2.x}, ${encrypted.C2.y})`);
+      setOutputText(`C1(${encrypted.C1.x}, ${encrypted.C1.y});C2(${encrypted.C2.x}, ${encrypted.C2.y})`);
     } else {
       setOutputText(encrypted);
-
     }
   };
 
   const handleDecrypt = (algorithm) => {
+    if (!inputText) {
+      setInputError('Input text cannot be empty');
+      return;
+    }
+    setInputError('');
     let decrypted;
     switch (algorithm) {
       case 'RSA':
@@ -72,16 +70,14 @@ const App = () => {
         decrypted = decrypt(inputText.split(',').map(Number), keys.privateKey);
         break;
       case 'ECC':
-        const ecc = new ECC(
-          parseInt(eccA, 10),
-          parseInt(eccB, 10),
-          parseInt(eccP, 10),
-          new Point(parseInt(eccGx, 10), parseInt(eccGy, 10)),
-          parseInt(eccN, 10)
-        );
+        const ecc = new ECC(1, 1, 23, new Point(9, 17), 19);
         const privateKey = parseInt(eccPrivateKey, 10);
-        const encryptedPoints = inputText.split(';').map(pt => pt.split(',').map(Number));
-        decrypted = ecc.decrypt({ C1: new Point(encryptedPoints[0][0], encryptedPoints[0][1]), C2: new Point(encryptedPoints[1][0], encryptedPoints[1][1]) }, privateKey);
+        const encryptedPoints = inputText.split(';').map(pt => {
+          const coords = pt.slice(3, -1).split(',').map(Number);
+          return new Point(coords[0], coords[1]);
+        });
+        decrypted = ecc.decrypt({ C1: encryptedPoints[0], C2: encryptedPoints[1] }, privateKey);
+        decrypted = ecc.decodeMessage(decrypted);
         break;
       default:
         decrypted = '';
@@ -93,15 +89,15 @@ const App = () => {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Input</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, inputError ? styles.inputError : null]}
         placeholder="Input the text"
         value={inputText}
         onChangeText={setInputText}
         multiline
       />
+      {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
       <View style={styles.buttonContainer}>
-        
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('');handleEncrypt('SHA224'); }}>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm(''); handleEncrypt('SHA224'); }}>
           <Text>SHA224</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); }}>
@@ -111,7 +107,7 @@ const App = () => {
           <Text>ECC</Text>
         </TouchableOpacity>
       </View>
-      
+
       {selectedAlgorithm === 'RSA' && (
         <View style={styles.rsaContainer}>
           <Text style={styles.subHeader}>RSA Options</Text>
@@ -168,42 +164,6 @@ const App = () => {
           <Text style={styles.subHeader}>ECC Options</Text>
           <TextInput
             style={styles.input}
-            placeholder="Coefficient a"
-            value={eccA}
-            onChangeText={setEccA}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Coefficient b"
-            value={eccB}
-            onChangeText={setEccB}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Prime p"
-            value={eccP}
-            onChangeText={setEccP}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Base Point Gx"
-            value={eccGx}
-            onChangeText={setEccGx}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Base Point Gy"
-            value={eccGy}
-            onChangeText={setEccGy}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Order n"
-            value={eccN}
-            onChangeText={setEccN}
-          />
-          <TextInput
-            style={styles.input}
             placeholder="Private Key"
             value={eccPrivateKey}
             onChangeText={setEccPrivateKey}
@@ -235,10 +195,10 @@ const App = () => {
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+    paddingTop: 50,
     backgroundColor: '#fff',
     flexGrow: 1,
   },
@@ -254,6 +214,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 100,
   },
+  inputError: {
+    borderColor: 'red',
+  },
   buttonContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -268,14 +231,6 @@ const styles = StyleSheet.create({
   selectedButton: {
     backgroundColor: '#007BFF',
     color: '#fff',
-  },
-  aesContainer: {
-    marginTop: 20,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    backgroundColor: '#f9f9f9',
   },
   rsaContainer: {
     marginTop: 20,
@@ -295,9 +250,6 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: 5,
-  },
-  picker: {
-    marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
@@ -328,6 +280,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-})
+  errorText: {
+    color: 'red',
+    marginBottom: 20,
+  },
+});
 
 export default App;

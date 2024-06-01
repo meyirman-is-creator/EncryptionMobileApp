@@ -1,5 +1,3 @@
-// ecc.js
-
 class Point {
     constructor(x, y) {
         this.x = x;
@@ -17,58 +15,53 @@ class Point {
 
 class ECC {
     constructor(a, b, p, G, n) {
-        this.a = a; 
-        this.b = b; 
-        this.p = p; 
-        this.G = G; 
-        this.n = n; 
+        this.a = a;
+        this.b = b;
+        this.p = p;
+        this.G = G;
+        this.n = n;
     }
 
     modInverse(k, p) {
-        if (k < 0) {
-            return p - this.modInverse(-k, p);
+        k = k % p;
+        for (let x = 1; x < p; x++) {
+            if ((k * x) % p === 1) {
+                return x;
+            }
         }
-        let s = 0, old_s = 1;
-        let t = 1, old_t = 0;
-        let r = p, old_r = k;
-        while (r !== 0) {
-            const quotient = Math.floor(old_r / r);
-            [old_r, r] = [r, old_r - quotient * r];
-            [old_s, s] = [s, old_s - quotient * s];
-            [old_t, t] = [t, old_t - quotient * t];
-        }
-        return (old_s + p) % p;
+        return 1;
     }
 
     addPoints(P, Q) {
         if (P.isInfinity()) return Q;
         if (Q.isInfinity()) return P;
 
+        let s;
         if (P.equals(Q)) {
-            const s = ((3 * P.x * P.x + this.a) * this.modInverse(2 * P.y, this.p)) % this.p;
-            const x = (s * s - 2 * P.x) % this.p;
-            const y = (s * (P.x - x) - P.y) % this.p;
-            return new Point((x + this.p) % this.p, (y + this.p) % this.p);
+            s = (3 * P.x * P.x + this.a) * this.modInverse(2 * P.y, this.p);
         } else {
-            const s = ((Q.y - P.y) * this.modInverse(Q.x - P.x, this.p)) % this.p;
-            const x = (s * s - P.x - Q.x) % this.p;
-            const y = (s * (P.x - x) - P.y) % this.p;
-            return new Point((x + this.p) % this.p, (y + this.p) % this.p);
+            s = (Q.y - P.y) * this.modInverse(Q.x - P.x, this.p);
         }
+        s = s % this.p;
+
+        const x = (s * s - P.x - Q.x) % this.p;
+        const y = (s * (P.x - x) - P.y) % this.p;
+
+        return new Point((x + this.p) % this.p, (y + this.p) % this.p);
     }
 
     multiplyPoint(k, P) {
-        let N = P;
-        let Q = new Point(null, null); // "infinity" point
+        let result = new Point(null, null); // Point at infinity
+        let addend = P;
 
         while (k > 0) {
             if (k % 2 === 1) {
-                Q = this.addPoints(Q, N);
+                result = this.addPoints(result, addend);
             }
-            N = this.addPoints(N, N);
+            addend = this.addPoints(addend, addend);
             k = Math.floor(k / 2);
         }
-        return Q;
+        return result;
     }
 
     generateKeyPair() {
@@ -91,15 +84,14 @@ class ECC {
     }
 
     encodeMessage(message) {
-        // Преобразуем сообщение в точку на кривой (упрощенный пример)
         const x = message.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % this.p;
         const y = Math.sqrt(x * x * x + this.a * x + this.b) % this.p;
         return new Point(x, y);
     }
 
     decodeMessage(point) {
-        // Преобразуем точку обратно в сообщение (упрощенный пример)
-        return String.fromCharCode(point.x % 256);
+        const charCode = point.x % 256;
+        return String.fromCharCode(charCode);
     }
 }
 
