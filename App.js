@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, Button, StyleSheet, Alert } from 'react-native';
 const sha224 = require('./algorithms/sha224');
 const { encrypt, decrypt, generateKeys } = require('./algorithms/rsa');
-const { ECC, Point } = require('./algorithms/ecc');
-
+const caesarCipher = require('./algorithms/ceaser');
 const App = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
@@ -14,10 +13,8 @@ const App = () => {
   const [rsaModulus, setRsaModulus] = useState('');
   const [rsaInputFormat, setRsaInputFormat] = useState('Hex');
   const [rsaOutputFormat, setRsaOutputFormat] = useState('Hex');
+  const [shift, setShift] = useState(3);
 
-  const [eccPrivateKey, setEccPrivateKey] = useState('');
-  const [eccPublicKeyX, setEccPublicKeyX] = useState('');
-  const [eccPublicKeyY, setEccPublicKeyY] = useState('');
   const [inputError, setInputError] = useState('');
 
   const handleEncrypt = (algorithm) => {
@@ -31,11 +28,8 @@ const App = () => {
       case 'SHA224':
         encrypted = sha224(inputText);
         break;
-      case 'ECC':
-        const ecc = new ECC(1, 1, 23, new Point(9, 17), 19);
-        const publicKey = new Point(parseInt(eccPublicKeyX, 10), parseInt(eccPublicKeyY, 10));
-        const messagePoint = ecc.encodeMessage(inputText);
-        encrypted = ecc.encrypt(messagePoint, publicKey);
+        case 'Caesar':
+        encrypted = caesarCipher.encrypt(inputText, shift);
         break;
       case 'RSA':
         const keys = generateKeys(61, 53);
@@ -47,11 +41,8 @@ const App = () => {
       default:
         encrypted = '';
     }
-    if ('ECC' === algorithm) {
-      setOutputText(`C1(${encrypted.C1.x}, ${encrypted.C1.y});C2(${encrypted.C2.x}, ${encrypted.C2.y})`);
-    } else {
       setOutputText(encrypted);
-    }
+    
   };
 
   const handleDecrypt = (algorithm) => {
@@ -67,17 +58,11 @@ const App = () => {
           publicKey: { e: rsaPublicKey, n: rsaModulus },
           privateKey: { d: rsaPrivateKey, n: rsaModulus }
         };
-        decrypted = decrypt(inputText.split(',').map(Number), keys.privateKey);
+        const encryptedNumbers = inputText.split(',').map(str => parseInt(str, 10));
+        decrypted = decrypt(encryptedNumbers, keys.privateKey);
         break;
-      case 'ECC':
-        const ecc = new ECC(1, 1, 23, new Point(9, 17), 19);
-        const privateKey = parseInt(eccPrivateKey, 10);
-        const encryptedPoints = inputText.split(';').map(pt => {
-          const coords = pt.slice(3, -1).split(',').map(Number);
-          return new Point(coords[0], coords[1]);
-        });
-        decrypted = ecc.decrypt({ C1: encryptedPoints[0], C2: encryptedPoints[1] }, privateKey);
-        decrypted = ecc.decodeMessage(decrypted);
+        case 'Caesar':
+        decrypted = caesarCipher.decrypt(inputText, shift);
         break;
       default:
         decrypted = '';
@@ -103,8 +88,8 @@ const App = () => {
         <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('RSA'); }}>
           <Text>RSA</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('ECC'); }}>
-          <Text>ECC</Text>
+        <TouchableOpacity style={styles.button} onPress={() => { setSelectedAlgorithm('Caesar'); }}>
+          <Text>Caesar Cipher</Text>
         </TouchableOpacity>
       </View>
 
@@ -159,35 +144,25 @@ const App = () => {
           </TouchableOpacity>
         </View>
       )}
-      {selectedAlgorithm === 'ECC' && (
-        <View style={styles.eccContainer}>
-          <Text style={styles.subHeader}>ECC Options</Text>
+      {selectedAlgorithm === 'Caesar' && (
+        <View style={styles.caesarContainer}>
+          <Text style={styles.subHeader}>Caesar Cipher Options</Text>
           <TextInput
             style={styles.input}
-            placeholder="Private Key"
-            value={eccPrivateKey}
-            onChangeText={setEccPrivateKey}
+            placeholder="Shift"
+            value={shift.toString()}
+            onChangeText={text => setShift(parseInt(text, 10))}
+            keyboardType="numeric"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Public Key X"
-            value={eccPublicKeyX}
-            onChangeText={setEccPublicKeyX}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Public Key Y"
-            value={eccPublicKeyY}
-            onChangeText={setEccPublicKeyY}
-          />
-          <TouchableOpacity style={styles.encryptButton} onPress={() => handleEncrypt('ECC')}>
+          <TouchableOpacity style={styles.encryptButton} onPress={() => handleEncrypt('Caesar')}>
             <Text style={{ color: '#fff' }}>Encryption</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.encryptButton} onPress={() => handleDecrypt('ECC')}>
+          <TouchableOpacity style={styles.encryptButton} onPress={() => handleDecrypt('Caesar')}>
             <Text style={{ color: '#fff' }}>Decryption</Text>
           </TouchableOpacity>
         </View>
       )}
+      
       <Text style={styles.header}>Output</Text>
       <TextInput style={styles.input} value={outputText} editable={false} multiline />
       <Button title="Copy" onPress={() => { handleEncrypt() }} />
@@ -219,47 +194,31 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    marginBottom: 20,
   },
   button: {
     padding: 10,
-    backgroundColor: '#eee',
-    borderRadius: 5,
-    margin: 5,
-  },
-  selectedButton: {
     backgroundColor: '#007BFF',
-    color: '#fff',
+    borderRadius: 5,
   },
   rsaContainer: {
-    marginTop: 20,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    backgroundColor: '#f9f9f9',
+    marginBottom: 20,
   },
-  eccContainer: {
-    marginTop: 20,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    backgroundColor: '#f9f9f9',
-  },
-  label: {
-    marginBottom: 5,
+  subHeader: {
+    fontSize: 16,
+    marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
   },
+  label: {
+    marginRight: 10,
+  },
   radioGroup: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 10,
   },
   radio: {
     marginRight: 10,
@@ -268,21 +227,20 @@ const styles = StyleSheet.create({
     marginRight: 10,
     fontWeight: 'bold',
   },
-  subHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
   encryptButton: {
-    padding: 10,
     backgroundColor: '#007BFF',
+    padding: 10,
     borderRadius: 5,
     alignItems: 'center',
     marginTop: 10,
   },
   errorText: {
     color: 'red',
-    marginBottom: 20,
+    marginBottom: 10,
+  },
+
+  caesarContainer: {
+    marginBottom: 16,
   },
 });
 
